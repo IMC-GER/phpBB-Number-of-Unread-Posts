@@ -1,0 +1,11 @@
+services:
+    imcger.numberofunrdposts.listener:
+        class: imcger\numberofunrdposts\event\noup_main_listener
+        arguments:
+            - '@dbal.conn'
+            - '@template'
+            - '@language'
+            - '@config'
+            - '@user'
+        tags:
+            - { name: event.listener }
