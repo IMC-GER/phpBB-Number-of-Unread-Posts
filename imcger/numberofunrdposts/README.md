@@ -1,7 +1,7 @@
 # Numbers of Unread Posts
-
+![Index view](https://raw.githubusercontent.com/IMC-GER/images/refs/heads/main/screenshots/numberofunrdposts/numberofunrdposts.png)
 ## Description
-This extension add the number of unread posts to the tooltip in the forum view.
+This phpBB extension add the number of unread posts and topics to the tooltip in the forum and index view. 
 
 ## Requirements
 - phpBB >= 3.3.1 and < 4.0.0-dev
