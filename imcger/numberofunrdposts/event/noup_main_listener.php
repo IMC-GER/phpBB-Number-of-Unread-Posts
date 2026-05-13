@@ -115,6 +115,11 @@ class noup_main_listener implements EventSubscriberInterface
 
 	public function get_num_unrd_posts(array $topic_list): array
 	{
+		if (empty($topic_list))
+		{
+			return [];
+		}
+		
 		$sql_array = [
 			'SELECT'	=> 'p.topic_id, COUNT(p.topic_id) AS unread_post_counter',
 			'FROM'		=> [POSTS_TABLE => 'p',	],
