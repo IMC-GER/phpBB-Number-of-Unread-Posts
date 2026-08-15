@@ -3,11 +3,16 @@
 ## Description
 This phpBB extension add the number of unread posts and topics to the tooltip in the forum and index view. 
 
+[![Github All Releases](https://img.shields.io/github/downloads/IMC-GER/phpBB-Number-of-Unread-Posts/total.svg)]()
+
 ## Requirements
 - phpBB >= 3.3.1 and < 4.0.0-dev
 - php 8.0.0 or higher
 
 ## Changelog
+- v1.0.0-b3 15.08.2026
+  - Added: Support for `Recent Topics NG` and `Recent Topics V3.x`.
+  
 - v1.0.0-b2 13.05.2026
   - Fixed: SQL Error when forum without topics
   - Typo in `readme.md`

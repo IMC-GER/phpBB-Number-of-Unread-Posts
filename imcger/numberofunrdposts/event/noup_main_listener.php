@@ -16,6 +16,7 @@ class noup_main_listener implements EventSubscriberInterface
 {
 	protected array	 $num_unrd_posts;
 	protected array	 $num_unrd_topics;
+	protected array	 $recenttopics_num_unrd_posts;
 	protected string $js_subforums_title;
 
 	public function __construct
@@ -27,9 +28,10 @@ class noup_main_listener implements EventSubscriberInterface
 		protected \phpbb\user $user,
 	)
 	{
-		$this->num_unrd_posts	  = [];
-		$this->num_unrd_topics	  = [];
-		$this->js_subforums_title = '';
+		$this->num_unrd_posts	  			= [];
+		$this->num_unrd_topics	  			= [];
+		$this->recenttopics_num_unrd_posts	= [];
+		$this->js_subforums_title			= '';
 	}
 
 	public static function getSubscribedEvents(): array
@@ -41,6 +43,10 @@ class noup_main_listener implements EventSubscriberInterface
 			'core.display_forums_modify_sql'		   => 'display_forums_modify_sql',
 			'core.display_forums_modify_template_vars' => 'display_forums_modify_template_vars',
 			'core.display_forums_after'				   => 'display_forums_after',
+			'imcger.recenttopicsng.modify_topics_list' => 'recenttopics_get_topics_list',
+			'imcger.recenttopicsng.modify_tpl_ary'	   => 'recenttopics_modify_tpl_ary',
+			'avathar.recenttopics.modify_topics_list'  => 'recenttopics_get_topics_list',
+			'avathar.recenttopics.modify_tpl_ary'	   => 'recenttopics_modify_tpl_ary',
 		];
 	}
 
@@ -103,6 +109,27 @@ class noup_main_listener implements EventSubscriberInterface
 		$event['forum_row'] = $forum_row;
 	}
 
+	public function recenttopics_get_topics_list(object $event): void
+	{
+		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'])
+		{
+			$this->recenttopics_num_unrd_posts = $this->get_num_unrd_posts($event['topic_list']);
+		}
+	}
+
+	public function recenttopics_modify_tpl_ary(object $event): void
+	{
+		$row	 = $event['row'];
+		$tpl_ary = $event['tpl_ary'];
+
+		if (isset($this->recenttopics_num_unrd_posts[$row['topic_id']]))
+		{
+			$tpl_ary['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $this->recenttopics_num_unrd_posts[$row['topic_id']]);
+
+			$event['tpl_ary'] = $tpl_ary;
+		}
+	}
+
 	public function display_forums_after(): void
 	{
 		if ($this->js_subforums_title)
@@ -119,7 +146,7 @@ class noup_main_listener implements EventSubscriberInterface
 		{
 			return [];
 		}
-		
+
 		$sql_array = [
 			'SELECT'	=> 'p.topic_id, COUNT(p.topic_id) AS unread_post_counter',
 			'FROM'		=> [POSTS_TABLE => 'p',	],
