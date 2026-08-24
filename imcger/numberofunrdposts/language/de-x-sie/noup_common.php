@@ -21,12 +21,13 @@ if (empty($lang) || !is_array($lang))
 $lang = array_merge($lang, [
 	// User preferences
 	'NOUP_UNREAD_POSTS' => [
-		1 => '%1s ungelesenen Beitrag',
-		2 => '%1s ungelesene Beiträge',
-	],
+		0 => 'Dieses Thema enthält keine ungelesenen Beiträge.',
+        1 => 'Dieses Thema enthält einen ungelesenen Beitrag.',
+        2 => 'Dieses Thema enthält %1s ungelesene Beiträge.',
+    ],
 	'NOUP_UNREAD_TOPICS' => [
-		0 => 'Keine ungelesene Themen',
-		1 => '%1s ungelesenes Thema',
-		2 => '%1s ungelesene Themen',
+        0 => 'Es gibt keine ungelesenen Beiträge.',
+        1 => 'Es gibt ein Thema mit ungelesenen Beiträgen.',
+        2 => 'Es gibt %1s Themen mit ungelesenen Beiträgen.',
 	],
 ]);

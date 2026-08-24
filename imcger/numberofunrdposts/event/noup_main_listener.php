@@ -16,6 +16,7 @@ class noup_main_listener implements EventSubscriberInterface
 {
 	protected array	 $num_unrd_posts;
 	protected array	 $num_unrd_topics;
+	protected array	 $search_num_unrd_posts;
 	protected array	 $recenttopics_num_unrd_posts;
 	protected string $js_subforums_title;
 
@@ -30,6 +31,7 @@ class noup_main_listener implements EventSubscriberInterface
 	{
 		$this->num_unrd_posts	  			= [];
 		$this->num_unrd_topics	  			= [];
+		$this->search_num_unrd_posts		= [];
 		$this->recenttopics_num_unrd_posts	= [];
 		$this->js_subforums_title			= '';
 	}
@@ -43,18 +45,26 @@ class noup_main_listener implements EventSubscriberInterface
 			'core.display_forums_modify_sql'		   => 'display_forums_modify_sql',
 			'core.display_forums_modify_template_vars' => 'display_forums_modify_template_vars',
 			'core.display_forums_after'				   => 'display_forums_after',
+			'core.search_modify_rowset'				   => 'search_modify_rowset',
+			'core.search_modify_tpl_ary'			   => 'modify_tpl_ary',
 			'imcger.recenttopicsng.modify_topics_list' => 'recenttopics_get_topics_list',
-			'imcger.recenttopicsng.modify_tpl_ary'	   => 'recenttopics_modify_tpl_ary',
+			'imcger.recenttopicsng.modify_tpl_ary'	   => 'modify_tpl_ary',
 			'avathar.recenttopics.modify_topics_list'  => 'recenttopics_get_topics_list',
-			'avathar.recenttopics.modify_tpl_ary'	   => 'recenttopics_modify_tpl_ary',
+			'avathar.recenttopics.modify_tpl_ary'	   => 'modify_tpl_ary',
 		];
 	}
 
+	/**
+	 * Set the language vars
+	 */
 	public function user_setup_after(): void
 	{
 		$this->language->add_lang('noup_common', 'imcger/numberofunrdposts');
 	}
 
+	/**
+	 * Get the number of unread posts
+	 */
 	public function viewforum_modify_topics_data(object $event): void
 	{
 		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'])
@@ -63,18 +73,21 @@ class noup_main_listener implements EventSubscriberInterface
 		}
 	}
 
+	/**
+	 * Set template vars for topics
+	 */
 	public function viewforum_modify_topicrow(object $event): void
 	{
 		$topic_row = $event['topic_row'];
 
-		if (isset($this->num_unrd_posts[$topic_row['TOPIC_ID']]))
-		{
-			$topic_row['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $this->num_unrd_posts[$topic_row['TOPIC_ID']]);
+		$topic_row['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) ($this->num_unrd_posts[$topic_row['TOPIC_ID']] ?? 0));
 
-			$event['topic_row'] = $topic_row;
-		}
+		$event['topic_row'] = $topic_row;
 	}
 
+	/**
+	 * Get the number of unread topics
+	 */
 	public function display_forums_modify_sql(): void
 	{
 		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'])
@@ -83,6 +96,9 @@ class noup_main_listener implements EventSubscriberInterface
 		}
 	}
 
+	/**
+	 * Set template vars for forum index and forum category
+	 */
 	public function display_forums_modify_template_vars(object $event): void
 	{
 		$forum_row			 = $event['forum_row'];
@@ -90,12 +106,12 @@ class noup_main_listener implements EventSubscriberInterface
 		$forum_id			 = $forum_row['FORUM_ID'];
 		$num_subforum_topics = 0;
 
-		$forum_row['FORUM_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_TOPICS', isset($this->num_unrd_topics[$forum_id]) ? (int) $this->num_unrd_topics[$forum_id] : 0);
+		$forum_row['FORUM_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_TOPICS', (int) ($this->num_unrd_topics[$forum_id] ?? 0));
 
 		foreach ($subforums_row as $subforum)
 		{
 			$subforum_id		  = substr($subforum['U_SUBFORUM'], strpos($subforum['U_SUBFORUM'], 'f=') + 2);
-			$num_subforum_topic	  = isset($this->num_unrd_topics[$subforum_id]) ? $this->num_unrd_topics[$subforum_id] : 0;
+			$num_subforum_topic	  = $this->num_unrd_topics[$subforum_id] ?? 0;
 			$num_subforum_topics += $num_subforum_topic;
 
 			$this->js_subforums_title .= '$("a[href=\'' . $subforum['U_SUBFORUM'] . '\']").attr("title", "' . $this->language->lang('NOUP_UNREAD_TOPICS', (int) $num_subforum_topic) . '");';
@@ -109,6 +125,25 @@ class noup_main_listener implements EventSubscriberInterface
 		$event['forum_row'] = $forum_row;
 	}
 
+	/**
+	 * Get the number of unread topics in search mode
+	 */
+	public function search_modify_rowset(object $event): void
+	{
+		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'] && $event['show_results'] == 'topics')
+		{
+			$topic_list = array_keys($event['rowset']);
+
+			if (count($topic_list))
+			{
+				$this->search_num_unrd_posts = $this->get_num_unrd_posts($topic_list);
+			}
+		}
+	}
+
+	/**
+	 * Get the number of unread topic for "Recent Topics"
+	 */
 	public function recenttopics_get_topics_list(object $event): void
 	{
 		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'])
@@ -117,19 +152,23 @@ class noup_main_listener implements EventSubscriberInterface
 		}
 	}
 
-	public function recenttopics_modify_tpl_ary(object $event): void
+	/**
+	 * Set template vars for "Recent Topics" and topics in search mode
+	 */
+	public function modify_tpl_ary(object $event): void
 	{
-		$row	 = $event['row'];
-		$tpl_ary = $event['tpl_ary'];
+		$row			= $event['row'];
+		$tpl_ary		= $event['tpl_ary'];
+		$num_unrd_posts = $this->search_num_unrd_posts[$row['topic_id']] ?? $this->recenttopics_num_unrd_posts[$row['topic_id']] ?? 0;
 
-		if (isset($this->recenttopics_num_unrd_posts[$row['topic_id']]))
-		{
-			$tpl_ary['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $this->recenttopics_num_unrd_posts[$row['topic_id']]);
+		$tpl_ary['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $num_unrd_posts);
 
-			$event['tpl_ary'] = $tpl_ary;
-		}
+		$event['tpl_ary'] = $tpl_ary;
 	}
 
+	/**
+	 * Set JS to customize the title of subforums
+	 */
 	public function display_forums_after(): void
 	{
 		if ($this->js_subforums_title)
@@ -140,6 +179,9 @@ class noup_main_listener implements EventSubscriberInterface
 		}
 	}
 
+	/**
+	 * Get the number of unread posts
+	 */
 	public function get_num_unrd_posts(array $topic_list): array
 	{
 		if (empty($topic_list))
@@ -175,6 +217,9 @@ class noup_main_listener implements EventSubscriberInterface
 		return array_combine(array_column($row_set, 'topic_id'), array_column($row_set, 'unread_post_counter'));
 	}
 
+	/**
+	 * Get the number of unread topics
+	 */
 	public function get_num_unrd_topics(): array
 	{
 		$sql_array = [
