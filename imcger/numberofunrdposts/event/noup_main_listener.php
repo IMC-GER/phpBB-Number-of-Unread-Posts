@@ -42,7 +42,7 @@ class noup_main_listener implements EventSubscriberInterface
 			'core.user_setup_after'					   => 'user_setup_after',
 			'core.viewforum_modify_topics_data'		   => 'viewforum_modify_topics_data',
 			'core.viewforum_modify_topicrow'		   => 'viewforum_modify_topicrow',
-			'core.display_forums_modify_sql'		   => 'display_forums_modify_sql',
+			'core.display_forums_before'			   => 'display_forums_before',
 			'core.display_forums_modify_template_vars' => 'display_forums_modify_template_vars',
 			'core.display_forums_after'				   => 'display_forums_after',
 			'core.search_modify_rowset'				   => 'search_modify_rowset',
@@ -88,11 +88,11 @@ class noup_main_listener implements EventSubscriberInterface
 	/**
 	 * Get the number of unread topics
 	 */
-	public function display_forums_modify_sql(): void
+	public function display_forums_before(object $event): void
 	{
 		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'])
 		{
-			$this->num_unrd_topics = $this->get_num_unrd_topics();
+			$this->num_unrd_topics = $this->get_num_unrd_topics(array_column($event['forum_rows'], 'forum_id'));
 		}
 	}
 
@@ -101,26 +101,23 @@ class noup_main_listener implements EventSubscriberInterface
 	 */
 	public function display_forums_modify_template_vars(object $event): void
 	{
-		$forum_row			 = $event['forum_row'];
-		$subforums_row		 = $event['subforums_row'];
-		$forum_id			 = $forum_row['FORUM_ID'];
-		$num_subforum_topics = 0;
-
-		$forum_row['FORUM_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_TOPICS', (int) ($this->num_unrd_topics[$forum_id] ?? 0));
+		$forum_row		  = $event['forum_row'];
+		$subforums_row	  = $event['subforums_row'];
+		$forum_id		  = $forum_row['FORUM_ID'];
+		$num_forum_topics = $this->num_unrd_topics[$forum_id] ?? 0;
 
 		foreach ($subforums_row as $subforum)
 		{
-			$subforum_id		  = substr($subforum['U_SUBFORUM'], strpos($subforum['U_SUBFORUM'], 'f=') + 2);
-			$num_subforum_topic	  = $this->num_unrd_topics[$subforum_id] ?? 0;
-			$num_subforum_topics += $num_subforum_topic;
+			$subforum_id		 = substr($subforum['U_SUBFORUM'], strpos($subforum['U_SUBFORUM'], 'f=') + 2);
+			$num_subforum_topic	 = $this->num_unrd_topics[$subforum_id] ?? 0;
+			
+			// Number of unread topics plus number of unread topics from subforums
+			$num_forum_topics += $num_subforum_topic;
 
 			$this->js_subforums_title .= '$("a[href=\'' . $subforum['U_SUBFORUM'] . '\']").attr("title", "' . $this->language->lang('NOUP_UNREAD_TOPICS', (int) $num_subforum_topic) . '");';
 		}
 
-		if ($num_subforum_topics)
-		{
-			$forum_row['FORUM_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_TOPICS', (int) $num_subforum_topics);
-		}
+		$forum_row['FORUM_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_TOPICS', (int) $num_forum_topics);
 
 		$event['forum_row'] = $forum_row;
 	}
@@ -220,8 +217,27 @@ class noup_main_listener implements EventSubscriberInterface
 	/**
 	 * Get the number of unread topics
 	 */
-	public function get_num_unrd_topics(): array
+	public function get_num_unrd_topics(array $forum_ids): array
 	{
+		if (empty($forum_ids))
+		{
+			return [];
+		}
+
+		// Add subforums to the forum list
+		$sql_array_foren_ids = [
+			'SELECT'	=> 'f2.forum_id',
+			'FROM'		=> [FORUMS_TABLE => 'f1', ],
+			'LEFT_JOIN' => [
+				[
+					'FROM' => [FORUMS_TABLE => 'f2', ],
+					'ON'   => 'f2.left_id >= f1.left_id
+							AND f2.right_id <= f1.right_id',
+				],
+			],
+			'WHERE'		=> $this->db->sql_in_set('f1.forum_id', $forum_ids),
+		];
+		
 		$sql_array = [
 			'SELECT'	=> 't.forum_id, COUNT(t.topic_id) AS unread_topics_counter ',
 			'FROM'		=> [TOPICS_TABLE => 't', ],
@@ -237,11 +253,12 @@ class noup_main_listener implements EventSubscriberInterface
 							AND ft.forum_id = t.forum_id",
 				],
 			],
-			'WHERE'		=> "t.topic_last_post_time > COALESCE(tt.mark_time, ft.mark_time, {$this->user->data['user_lastmark']}, 0)",
+			'WHERE'		=> 't.forum_id IN (' . (string) $this->db->sql_build_query('SELECT', $sql_array_foren_ids) . ')' . "
+						AND t.topic_last_post_time > COALESCE(tt.mark_time, ft.mark_time, {$this->user->data['user_lastmark']}, 0)",
 			'GROUP_BY'	=> 't.forum_id',
 		];
+		
 		$sql	 = $this->db->sql_build_query('SELECT', $sql_array);
-
 		$result	 = $this->db->sql_query($sql);
 		$row_set = $this->db->sql_fetchrowset($result);
 		$this->db->sql_freeresult($result);
