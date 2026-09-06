@@ -8,6 +8,15 @@ This phpBB extension add the number of unread posts and topics to the tooltip in
 - php 8.0.0 or higher
 
 ## Changelog
+- v1.0.0 06.09.2026
+
+- v1.0.0-b5 27.08.2026
+  - Update GNU GENERAL PUBLIC LICENSE
+  - Improve sql-query for unread topics
+    * Search only the necessary forums
+    * Changed core event to get forum ids
+  - Fixed topic counter for forums with subforum
+
 - v1.0.0-b4 25.08.2026
   - Added: Support for the search results.
   - Changed: Replaced the short ternary operator with the null coalescing operator.

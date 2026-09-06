@@ -226,17 +226,17 @@ class noup_main_listener implements EventSubscriberInterface
 
 		// Add subforums to the forum list
 		$sql_array_forum_ids = [
-			'SELECT'	=> 'f2.forum_id',
+			'SELECT'	=> 'f1.forum_id',
 			'FROM'		=> [FORUMS_TABLE => 'f1', ],
 			'LEFT_JOIN' => [
 				[
 					'FROM' => [FORUMS_TABLE => 'f2', ],
-					'ON'   => 'f2.forum_id = f1.forum_id
-							OR (f2.left_id > f1.left_id
-								AND f2.right_id < f1.right_id)',
+					'ON'   => $this->db->sql_in_set('f2.forum_id', $forum_ids),
 				],
 			],
-			'WHERE'		=> $this->db->sql_in_set('f1.forum_id', $forum_ids),
+			'WHERE'		=> 'f1.forum_id = f2.forum_id
+						OR (f1.left_id > f2.left_id
+						AND f1.right_id < f2.right_id)',
 		];
 
 		$sql_array = [
