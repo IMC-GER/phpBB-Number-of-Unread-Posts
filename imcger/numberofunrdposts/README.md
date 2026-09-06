@@ -14,7 +14,7 @@ This phpBB extension add the number of unread posts and topics to the tooltip in
   - Update GNU GENERAL PUBLIC LICENSE
   - Improve sql-query for unread topics
     * Search only the necessary forums
-    * Changed core event to get forum ids
+    * Changed: Used core event to get forum ids
   - Fixed topic counter for forums with subforum
 
 - v1.0.0-b4 25.08.2026
