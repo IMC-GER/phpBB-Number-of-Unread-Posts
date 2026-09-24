@@ -7,6 +7,12 @@
  *
  #}
 
-{% if JS_SUBFORUMS_TITLE is defined %}
-	<script> {{ JS_SUBFORUMS_TITLE }} </script>
+{% if noup_subforums_title is defined %}
+	<script>
+		{% for noup in noup_subforums_title -%}
+			$("a[href='{{ noup.URL|raw }}']").attr("title", "{{ noup.TITLE|e('js') }}");
+		{% endfor -%}
+	</script>
 {% endif %}
+
+

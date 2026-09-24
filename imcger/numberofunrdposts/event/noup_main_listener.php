@@ -14,11 +14,11 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class noup_main_listener implements EventSubscriberInterface
 {
-	protected array	 $num_unrd_posts;
-	protected array	 $num_unrd_topics;
-	protected array	 $search_num_unrd_posts;
-	protected array	 $recenttopics_num_unrd_posts;
-	protected string $js_subforums_title;
+	protected array $num_unrd_posts;
+	protected array	$num_unrd_topics;
+	protected array	$search_num_unrd_posts;
+	protected array	$recenttopics_num_unrd_posts;
+	protected array $js_subforums_title;
 
 	public function __construct
 	(
@@ -33,7 +33,7 @@ class noup_main_listener implements EventSubscriberInterface
 		$this->num_unrd_topics	  			= [];
 		$this->search_num_unrd_posts		= [];
 		$this->recenttopics_num_unrd_posts	= [];
-		$this->js_subforums_title			= '';
+		$this->js_subforums_title			= [];
 	}
 
 	public static function getSubscribedEvents(): array
@@ -114,7 +114,10 @@ class noup_main_listener implements EventSubscriberInterface
 			// Number of unread topics plus number of unread topics from subforums
 			$num_forum_topics += $num_subforum_topic;
 
-			$this->js_subforums_title .= '$("a[href=\'' . $subforum['U_SUBFORUM'] . '\']").attr("title", "' . $this->language->lang('NOUP_UNREAD_TOPICS', (int) $num_subforum_topic) . '");';
+			$this->js_subforums_title[] = [
+				'URL'	=> $subforum['U_SUBFORUM'],
+				'TITLE' => $this->language->lang('NOUP_UNREAD_TOPICS', (int) $num_subforum_topic),
+			];
 		}
 
 		$forum_row['FORUM_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_TOPICS', (int) $num_forum_topics);
@@ -168,10 +171,10 @@ class noup_main_listener implements EventSubscriberInterface
 	 */
 	public function display_forums_after(): void
 	{
-		if ($this->js_subforums_title)
+		if (count($this->js_subforums_title))
 		{
 			$this->template->assign_vars([
-				'JS_SUBFORUMS_TITLE' => $this->js_subforums_title,
+				'noup_subforums_title' => $this->js_subforums_title,
 			]);
 		}
 	}
