@@ -8,6 +8,9 @@ This phpBB extension add the number of unread posts and topics to the tooltip in
 - php 8.0.0 or higher
 
 ## Changelog
+- v1.0.2 27.09.2026
+  - Don't change title in links and moved topics.
+
 - v1.0.1 24.09.2026
   - Changed: Use TWIG to build the JavaScript code in the template.
 
