@@ -79,9 +79,12 @@ class noup_main_listener implements EventSubscriberInterface
 	public function viewforum_modify_topicrow(object $event): void
 	{
 		$topic_row = $event['topic_row'];
-
-		$topic_row['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) ($this->num_unrd_posts[$topic_row['TOPIC_ID']] ?? 0));
-
+ 
+		if (!in_array($topic_row['TOPIC_IMG_STYLE'], ['forum_link', 'topic_moved']))
+		{
+			$topic_row['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) ($this->num_unrd_posts[$topic_row['TOPIC_ID']] ?? 0));
+		}
+		
 		$event['topic_row'] = $topic_row;
 	}
 
@@ -161,8 +164,11 @@ class noup_main_listener implements EventSubscriberInterface
 		$tpl_ary		= $event['tpl_ary'];
 		$num_unrd_posts = $this->search_num_unrd_posts[$row['topic_id']] ?? $this->recenttopics_num_unrd_posts[$row['topic_id']] ?? 0;
 
-		$tpl_ary['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $num_unrd_posts);
-
+		if (!in_array($tpl_ary['TOPIC_IMG_STYLE'], ['forum_link', 'topic_moved']))
+		{
+			$tpl_ary['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $num_unrd_posts);
+		}
+		
 		$event['tpl_ary'] = $tpl_ary;
 	}
 
