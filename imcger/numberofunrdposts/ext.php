@@ -14,9 +14,34 @@ class ext extends \phpbb\extension\base
 {
 	public function is_enableable()
 	{
-		$valid_phpbb = phpbb_version_compare(PHPBB_VERSION, '3.3.1', '>=') && phpbb_version_compare(PHPBB_VERSION, '4.0.0-dev', '<');
-		$valid_php	 = phpbb_version_compare(PHP_VERSION, '8.0.0', '>=') && phpbb_version_compare(PHP_VERSION, '8.6.0-dev', '<');
+		// If phpBB version 3.2 or less cancel
+		if (phpbb_version_compare(PHPBB_VERSION, '3.3.0', '<'))
+		{
+			return false;
+		}
 
-		return ($valid_phpbb && $valid_php);
-	}
-}
+		$config		 = $this->container->get('config');
+		$ext_manager = $this->container->get('ext.manager');
+		$language	 = $this->container->get('language');
+		$path_helper = $this->container->get('path_helper');
+		$language->add_lang('info_acp_numberofunrdposts', 'imcger/numberofunrdposts');
+
+		$error_message 	= [];
+
+		// "Enable server-side topic marking" must be active.
+		if (!$config['load_db_lastread'])
+		{
+			$error_message[] = $language->lang('IMCGER_REQUIRE_SERVER_SIDE_MARKING',  append_sid($path_helper->get_phpbb_root_path() . $path_helper->get_adm_relative_path() . 'index.' . $path_helper->get_php_ext(), 'i=acp_board&amp;mode=load#load_db_lastread'));
+		}
+
+		// Check php and phpBB extension requirments
+		$ext_requirements = new \imcger\numberofunrdposts\core\imcger_ext_requirements($ext_manager, $language, $this->extension_name);
+		$requirements	  = $ext_requirements->check();
+
+		if ($requirements !== true)
+		{
+			$error_message = array_merge($error_message, $requirements);
+		}
+
+		return empty($error_message) ? true : $error_message;
+	}}

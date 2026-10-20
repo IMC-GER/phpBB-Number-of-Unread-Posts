@@ -19,6 +19,7 @@ if (empty($lang) || !is_array($lang))
 }
 
 $lang = array_merge($lang, [
+	// Tooltips
 	'NOUP_UNREAD_POSTS' => [
 		0 => 'Dieses Thema enthält keine ungelesenen Beiträge.',
 		1 => 'Dieses Thema enthält einen ungelesenen Beitrag.',

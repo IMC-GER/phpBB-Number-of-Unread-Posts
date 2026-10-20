@@ -227,7 +227,7 @@ class noup_main_listener implements EventSubscriberInterface
 				],
 			],
 			'WHERE'		=> $this->db->sql_in_set('p.topic_id', $topic_list) . '
-						AND ' . $this->content_visibility->get_global_visibility_sql('post', [], 'p.') . "
+						AND ' . (string) $this->content_visibility->get_global_visibility_sql('post', [], 'p.') . "
 						AND p.post_time > COALESCE(tt.mark_time, ft.mark_time, {$this->user->data['user_lastmark']}, 0)",
 			'GROUP_BY'	=> 'p.topic_id',
 		];
@@ -300,7 +300,7 @@ class noup_main_listener implements EventSubscriberInterface
 				],
 			],
 			'WHERE'		=> $this->db->sql_in_set('t.forum_id', array_column($forum_ids, 'forum_id')) . '
-						AND ' . $this->content_visibility->get_global_visibility_sql('topic', [], 't.') . "
+						AND ' . (string) $this->content_visibility->get_global_visibility_sql('topic', [], 't.') . "
 						AND t.topic_last_post_time > COALESCE(tt.mark_time, ft.mark_time, {$this->user->data['user_lastmark']}, 0)",
 			'GROUP_BY'	=> 't.forum_id',
 		];
