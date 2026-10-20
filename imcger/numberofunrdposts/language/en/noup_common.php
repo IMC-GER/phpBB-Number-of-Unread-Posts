@@ -22,11 +22,11 @@ $lang = array_merge($lang, [
 	'NOUP_UNREAD_POSTS' => [
 		0 => 'This topic has no unread posts.',
 		1 => 'There is one unread post in this topic.',
-		2 => 'There are %1s unread posts in this topic.',
+		2 => 'There are %d unread posts in this topic.',
 	],
 	'NOUP_UNREAD_TOPICS' => [
 		0 => 'There are no unread posts.',
 		1 => 'There is one topic with unread posts.',
-		2 => 'There are %1s topics with unread posts.',
+		2 => 'There are %d topics with unread posts.',
 	],
 ]);

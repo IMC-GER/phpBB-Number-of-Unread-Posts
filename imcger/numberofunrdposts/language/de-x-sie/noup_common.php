@@ -22,11 +22,11 @@ $lang = array_merge($lang, [
 	'NOUP_UNREAD_POSTS' => [
 		0 => 'Dieses Thema enthält keine ungelesenen Beiträge.',
 		1 => 'Dieses Thema enthält einen ungelesenen Beitrag.',
-		2 => 'Dieses Thema enthält %1s ungelesene Beiträge.',
+		2 => 'Dieses Thema enthält %d ungelesene Beiträge.',
 	],
 	'NOUP_UNREAD_TOPICS' => [
 		0 => 'Es gibt keine ungelesenen Beiträge.',
 		1 => 'Es gibt ein Thema mit ungelesenen Beiträgen.',
-		2 => 'Es gibt %1s Themen mit ungelesenen Beiträgen.',
+		2 => 'Es gibt %d Themen mit ungelesenen Beiträgen.',
 	],
 ]);

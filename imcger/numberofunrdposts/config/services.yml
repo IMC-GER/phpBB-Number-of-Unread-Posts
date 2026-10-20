@@ -3,9 +3,11 @@ services:
         class: imcger\numberofunrdposts\event\noup_main_listener
         arguments:
             - '@dbal.conn'
+            - '@content.visibility'
             - '@template'
             - '@language'
             - '@config'
             - '@user'
+            - '@auth'
         tags:
             - { name: event.listener }

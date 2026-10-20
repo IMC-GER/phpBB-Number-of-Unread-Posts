@@ -23,10 +23,12 @@ class noup_main_listener implements EventSubscriberInterface
 	public function __construct
 	(
 		protected \phpbb\db\driver\driver_interface $db,
+		protected \phpbb\content_visibility $content_visibility,
 		protected \phpbb\template\template $template,
 		protected \phpbb\language\language $language,
 		protected \phpbb\config\config $config,
 		protected \phpbb\user $user,
+		protected \phpbb\auth\auth $auth,
 	)
 	{
 		$this->num_unrd_posts	  			= [];
@@ -78,6 +80,11 @@ class noup_main_listener implements EventSubscriberInterface
 	 */
 	public function viewforum_modify_topicrow(object $event): void
 	{
+		if (!$this->user->data['is_registered'] || !$this->config['load_db_lastread'])
+		{
+			return;
+		}
+
 		$topic_row = $event['topic_row'];
 
 		if (isset($topic_row['TOPIC_IMG_STYLE']) && !in_array($topic_row['TOPIC_IMG_STYLE'], ['forum_link', 'topic_moved']))
@@ -104,6 +111,11 @@ class noup_main_listener implements EventSubscriberInterface
 	 */
 	public function display_forums_modify_template_vars(object $event): void
 	{
+		if (!$this->user->data['is_registered'] || !$this->config['load_db_lastread'])
+		{
+			return;
+		}
+
 		$forum_row		  = $event['forum_row'];
 		$subforums_row	  = $event['subforums_row'];
 		$forum_id		  = $forum_row['FORUM_ID'];
@@ -111,11 +123,10 @@ class noup_main_listener implements EventSubscriberInterface
 
 		foreach ($subforums_row as $subforum)
 		{
-			$subforum_id		 = substr($subforum['U_SUBFORUM'], strpos($subforum['U_SUBFORUM'], 'f=') + 2);
-			$num_subforum_topic	 = $this->num_unrd_topics[$subforum_id] ?? 0;
+			$query = parse_url($subforum['U_SUBFORUM'], PHP_URL_QUERY);
+			parse_str($query, $query_ary);
 
-			// Number of unread topics plus number of unread topics from subforums
-			$num_forum_topics += $num_subforum_topic;
+			$num_subforum_topic = $this->num_unrd_topics[$query_ary['f']] ?? 0;
 
 			$this->js_subforums_title[] = [
 				'URL'	=> $subforum['U_SUBFORUM'],
@@ -160,6 +171,11 @@ class noup_main_listener implements EventSubscriberInterface
 	 */
 	public function modify_tpl_ary(object $event): void
 	{
+		if (!$this->user->data['is_registered'] || !$this->config['load_db_lastread'])
+		{
+			return;
+		}
+
 		$row			= $event['row'];
 		$tpl_ary		= $event['tpl_ary'];
 		$num_unrd_posts = $this->search_num_unrd_posts[$row['topic_id']] ?? $this->recenttopics_num_unrd_posts[$row['topic_id']] ?? 0;
@@ -210,7 +226,8 @@ class noup_main_listener implements EventSubscriberInterface
 							AND ft.forum_id = p.forum_id",
 				],
 			],
-			'WHERE'		=> $this->db->sql_in_set('p.topic_id', $topic_list) . "
+			'WHERE'		=> $this->db->sql_in_set('p.topic_id', $topic_list) . '
+						AND ' . $this->content_visibility->get_global_visibility_sql('post', [], 'p.') . "
 						AND p.post_time > COALESCE(tt.mark_time, ft.mark_time, {$this->user->data['user_lastmark']}, 0)",
 			'GROUP_BY'	=> 'p.topic_id',
 		];
@@ -233,9 +250,21 @@ class noup_main_listener implements EventSubscriberInterface
 			return [];
 		}
 
-		// Add subforums to the forum list
+		// Get the allowed forums
+		$allowed_forum_ids = [];
+		$forum_read_ary	   = $this->auth->acl_getf('f_read');
+
+		foreach ($forum_read_ary as $forum_id => $allowed)
+		{
+			if ($allowed['f_read'])
+			{
+				$allowed_forum_ids[] = (int) $forum_id;
+			}
+		}
+
+		// Add allowed subforums to the forum list
 		$sql_array_forum_ids = [
-			'SELECT'	=> 'f1.forum_id',
+			'SELECT'	=> 'f1.forum_id, f1.parent_id',
 			'FROM'		=> [FORUMS_TABLE => 'f1', ],
 			'LEFT_JOIN' => [
 				[
@@ -243,10 +272,17 @@ class noup_main_listener implements EventSubscriberInterface
 					'ON'   => $this->db->sql_in_set('f2.forum_id', $forum_ids),
 				],
 			],
-			'WHERE'		=> 'f1.forum_id = f2.forum_id
+			'WHERE'		=> '(f1.forum_id = f2.forum_id
 						OR (f1.left_id > f2.left_id
-						AND f1.right_id < f2.right_id)',
+							AND f1.right_id < f2.right_id))
+						AND ' . $this->db->sql_in_set('f1.forum_id', $allowed_forum_ids),
+			'ORDER_BY'	=> 'f1.right_id',
 		];
+
+		$sql		= $this->db->sql_build_query('SELECT_DISTINCT', $sql_array_forum_ids);
+		$result		= $this->db->sql_query($sql);
+		$forum_ids	= $this->db->sql_fetchrowset($result);
+		$this->db->sql_freeresult($result);
 
 		$sql_array = [
 			'SELECT'	=> 't.forum_id, COUNT(t.topic_id) AS unread_topics_counter ',
@@ -263,7 +299,8 @@ class noup_main_listener implements EventSubscriberInterface
 							AND ft.forum_id = t.forum_id",
 				],
 			],
-			'WHERE'		=> 't.forum_id IN (' . (string) $this->db->sql_build_query('SELECT', $sql_array_forum_ids) . ')' . "
+			'WHERE'		=> $this->db->sql_in_set('t.forum_id', array_column($forum_ids, 'forum_id')) . '
+						AND ' . $this->content_visibility->get_global_visibility_sql('topic', [], 't.') . "
 						AND t.topic_last_post_time > COALESCE(tt.mark_time, ft.mark_time, {$this->user->data['user_lastmark']}, 0)",
 			'GROUP_BY'	=> 't.forum_id',
 		];
@@ -273,6 +310,22 @@ class noup_main_listener implements EventSubscriberInterface
 		$row_set = $this->db->sql_fetchrowset($result);
 		$this->db->sql_freeresult($result);
 
-		return array_combine(array_column($row_set, 'forum_id'), array_column($row_set, 'unread_topics_counter'));
+		$unread_topics_counter = array_combine(array_column($row_set, 'forum_id'), array_column($row_set, 'unread_topics_counter'));
+
+		// Add the number of unread topics of the children to the parent forum
+		foreach ($forum_ids as $forum_id)
+		{
+			if ($forum_id['parent_id'])
+			{
+				if (!isset($unread_topics_counter[$forum_id['parent_id']]))
+				{
+					$unread_topics_counter[$forum_id['parent_id']] = 0;
+				}
+
+				$unread_topics_counter[$forum_id['parent_id']] += $unread_topics_counter[$forum_id['forum_id']] ?? 0;
+			}
+		}
+
+		return $unread_topics_counter;
 	}
 }
