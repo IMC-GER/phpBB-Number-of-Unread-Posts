@@ -44,7 +44,7 @@ class imcger_ext_requirements
 
 	public function check_php()
 	{
-		$require_str = preg_replace('#[,\s]+#', ' ', trim($this->metadata['require']['php'] ?? '', ' \f\n\r\t\v\x00'));
+		$require_str = preg_replace('#[,\s]+#', ' ', trim($this->metadata['require']['php'] ?? '', ' \f\n\r\t\v'));
 		$require_php = explode(' ', $require_str);
 
 		if (strlen($require_php[0]))
@@ -56,6 +56,10 @@ class imcger_ext_requirements
 			else if ($require_php[0][0] == '~')
 			{
 				$require_php = $this->convert_tilde_version($require_php[0]);
+			}
+			else if (preg_match('/[*xX]/', $require_php[0]) === 1)
+			{
+				$require_php = $this->convert_wildcard_version($require_php[0]);
 			}
 
 			foreach ($require_php as $value)
@@ -74,7 +78,7 @@ class imcger_ext_requirements
 
 	public function check_phpbb()
 	{
-		$require_str   = preg_replace('#[,\s]+#', ' ', trim($this->metadata['require']['phpbb/phpbb'] ?? $this->metadata['extra']['soft-require']['phpbb/phpbb'] ?? '', ' \f\n\r\t\v\x00'));
+		$require_str   = preg_replace('#[,\s]+#', ' ', trim($this->metadata['require']['phpbb/phpbb'] ?? $this->metadata['extra']['soft-require']['phpbb/phpbb'] ?? '', ' \f\n\r\t\v'));
 		$require_phpbb = explode(' ', $require_str);
 
 		if (strlen($require_phpbb[0]))
@@ -86,6 +90,10 @@ class imcger_ext_requirements
 			else if ($require_phpbb[0][0] == '~')
 			{
 				$require_phpbb = $this->convert_tilde_version($require_phpbb[0]);
+			}
+			else if (preg_match('/[*xX]/', $require_php[0]) === 1)
+			{
+				$require_phpbb = $this->convert_wildcard_version($require_phpbb[0]);
 			}
 
 			foreach ($require_phpbb as $value)
@@ -156,9 +164,9 @@ class imcger_ext_requirements
 				return [">={$major}.0.0", "<{$nextMajor}.0.0"];
 
 			case 2:
-				// ~1.3 → >=1.3.0 <1.4.0
-				$nextMinor = $minor + 1;
-				return [">={$major}.{$minor}.0", "<{$major}.{$nextMinor}.0"];
+				// ~1.3 → >=1.3.0 <2.0.0
+				$nextMajor = $major + 1;
+				return [">={$major}.{$minor}.0", "<{$nextMajor}.0.0"];
 
 			case 3:
 				// ~1.3.2 → >=1.3.2 <1.4.0
@@ -199,5 +207,56 @@ class imcger_ext_requirements
 		}
 
 		return [];
+	}
+
+	protected function convert_wildcard_version(string $version): array
+	{
+		$version = trim($version);
+
+		// Only '*' or 'x' → any version
+		if ($version === '*' || strtolower($version) === 'x')
+		{
+			return ['>=0.0.0'];
+		}
+
+		$parts = explode('.', $version);
+
+		// The wildcard must be the last segment
+		$last = strtolower(end($parts));
+		if ($last !== '*' && $last !== 'x')
+		{
+			return [];
+		}
+
+		// remove wildcard
+		array_pop($parts);
+
+		// All remaining segments must be numeric
+		foreach ($parts as $part)
+		{
+			if (!ctype_digit($part))
+			{
+				return [];
+			}
+		}
+
+		$major = (int) ($parts[0] ?? 0);
+		$minor = (int) ($parts[1] ?? 0);
+
+		switch (count($parts))
+		{
+			case 1:
+				// 1.* → >=1.0.0 <2.0.0
+				$nextMajor = $major + 1;
+				return [">={$major}.0.0", "<{$nextMajor}.0.0"];
+
+			case 2:
+				// 1.3.* → >=1.3.0 <1.4.0
+				$nextMinor = $minor + 1;
+				return [">={$major}.{$minor}.0", "<{$major}.{$nextMinor}.0"];
+
+			default:
+				return [];
+		}
 	}
 }

@@ -276,7 +276,7 @@ class noup_main_listener implements EventSubscriberInterface
 						OR (f1.left_id > f2.left_id
 							AND f1.right_id < f2.right_id))
 						AND ' . $this->db->sql_in_set('f1.forum_id', $allowed_forum_ids),
-			'ORDER_BY'	=> 'f1.right_id',
+			'ORDER_BY'	=> 'f1.right_id ASC',
 		];
 
 		$sql		= $this->db->sql_build_query('SELECT_DISTINCT', $sql_array_forum_ids);
