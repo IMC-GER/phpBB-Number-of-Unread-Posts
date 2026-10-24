@@ -80,19 +80,17 @@ class noup_main_listener implements EventSubscriberInterface
 	 */
 	public function viewforum_modify_topicrow(object $event): void
 	{
-		if (!$this->user->data['is_registered'] || !$this->config['load_db_lastread'])
+		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'])
 		{
-			return;
+			$topic_row = $event['topic_row'];
+
+			if (isset($topic_row['TOPIC_IMG_STYLE']) && !in_array($topic_row['TOPIC_IMG_STYLE'], ['forum_link', 'topic_moved']))
+			{
+				$topic_row['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) ($this->num_unrd_posts[$topic_row['TOPIC_ID']] ?? 0));
+			}
+
+			$event['topic_row'] = $topic_row;
 		}
-
-		$topic_row = $event['topic_row'];
-
-		if (isset($topic_row['TOPIC_IMG_STYLE']) && !in_array($topic_row['TOPIC_IMG_STYLE'], ['forum_link', 'topic_moved']))
-		{
-			$topic_row['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) ($this->num_unrd_posts[$topic_row['TOPIC_ID']] ?? 0));
-		}
-
-		$event['topic_row'] = $topic_row;
 	}
 
 	/**
@@ -125,8 +123,9 @@ class noup_main_listener implements EventSubscriberInterface
 		{
 			$query = parse_url($subforum['U_SUBFORUM'], PHP_URL_QUERY);
 			parse_str($query, $query_ary);
+			$subforum_id = (int) $query_ary['f'];
 
-			$num_subforum_topic = $this->num_unrd_topics[$query_ary['f']] ?? 0;
+			$num_subforum_topic = $this->num_unrd_topics[$subforum_id] ?? 0;
 
 			$this->js_subforums_title[] = [
 				'URL'	=> $subforum['U_SUBFORUM'],
@@ -171,21 +170,19 @@ class noup_main_listener implements EventSubscriberInterface
 	 */
 	public function modify_tpl_ary(object $event): void
 	{
-		if (!$this->user->data['is_registered'] || !$this->config['load_db_lastread'])
+		if ($this->user->data['is_registered'] && $this->config['load_db_lastread'])
 		{
-			return;
+			$row			= $event['row'];
+			$tpl_ary		= $event['tpl_ary'];
+			$num_unrd_posts = $this->search_num_unrd_posts[$row['topic_id']] ?? $this->recenttopics_num_unrd_posts[$row['topic_id']] ?? 0;
+
+			if (isset($tpl_ary['TOPIC_IMG_STYLE']) && !in_array($tpl_ary['TOPIC_IMG_STYLE'], ['forum_link', 'topic_moved']))
+			{
+				$tpl_ary['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $num_unrd_posts);
+			}
+
+			$event['tpl_ary'] = $tpl_ary;
 		}
-
-		$row			= $event['row'];
-		$tpl_ary		= $event['tpl_ary'];
-		$num_unrd_posts = $this->search_num_unrd_posts[$row['topic_id']] ?? $this->recenttopics_num_unrd_posts[$row['topic_id']] ?? 0;
-
-		if (isset($topic_row['TOPIC_IMG_STYLE']) && !in_array($tpl_ary['TOPIC_IMG_STYLE'], ['forum_link', 'topic_moved']))
-		{
-			$tpl_ary['TOPIC_FOLDER_IMG_ALT'] = $this->language->lang('NOUP_UNREAD_POSTS', (int) $num_unrd_posts);
-		}
-
-		$event['tpl_ary'] = $tpl_ary;
 	}
 
 	/**
@@ -276,7 +273,7 @@ class noup_main_listener implements EventSubscriberInterface
 						OR (f1.left_id > f2.left_id
 							AND f1.right_id < f2.right_id))
 						AND ' . $this->db->sql_in_set('f1.forum_id', $allowed_forum_ids),
-			'ORDER_BY'	=> 'f1.right_id',
+			'ORDER_BY'	=> 'f1.right_id ASC',
 		];
 
 		$sql		= $this->db->sql_build_query('SELECT_DISTINCT', $sql_array_forum_ids);
