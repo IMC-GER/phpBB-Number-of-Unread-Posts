@@ -7,7 +7,7 @@ This phpBB extension add the number of unread posts and topics to the tooltip in
 
 ### Version
 * v1.0.2
-* 25/10/2026
+* 26/10/2026
 
 ### Requirements
 - phpBB >= 3.3.1 and < 4.0.0-dev

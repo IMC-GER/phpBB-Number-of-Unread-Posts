@@ -1,9 +1,9 @@
 {
     "name": "imcger/numberofunrdposts",
     "type": "phpbb-extension",
-    "description": "This extension add the number of unread post to the tooltip in the forum view.",
-    "version": "1.0.2-b4",
-    "time": "2026-10-24",
+    "description": "This phpBB extension add the number of unread posts and topics to the tooltip in the forum and index view.",
+    "version": "1.0.2",
+    "time": "2026-10-26",
     "keywords": ["phpbb", "extension", "numberofunrdposts"],
     "license": "GPL-2.0-only",
     "authors": [
